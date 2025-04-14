@@ -560,7 +560,7 @@ load_dotenv()
 hf_token = os.getenv("HF_API_KEY")
 
 from huggingface_hub import InferenceClient
-'''
+
 def get_score(resume, job_description):
     client = InferenceClient(token=hf_token)
     response = client.text_generation(
@@ -578,10 +578,11 @@ def get_score(resume, job_description):
         max_new_tokens=50
     )
     return response.strip()
-'''
+
 
 # mixedbread-ai/mxbai-rerank-xsmall-v1
 # a ranker LLM model
+'''
 def get_score(resume, job_description):
     client = InferenceClient(token=hf_token)
     response = client.text_generation(
@@ -599,7 +600,7 @@ def get_score(resume, job_description):
         max_new_tokens=50
     )
     return response.strip()
-
+'''
 '''
 
 if __name__ == "__main__":

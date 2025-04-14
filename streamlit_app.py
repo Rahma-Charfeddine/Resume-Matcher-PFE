@@ -200,7 +200,7 @@ output = st.selectbox(f"", resume_names)
 
 avs.add_vertical_space(5)
 
-# st.write("You have selected ", output, " printing the resume")
+st.write("You have selected ", output, " printing the resume")
 selected_file = read_json("Data/Processed/Resumes/" + output)
 #selected_file = read_json("Data/Processed/Resumes/Resume-john_doe (1).pdf127eee6c-a933-4bff-a075-5498ca29a1e4.json")
 avs.add_vertical_space(2)

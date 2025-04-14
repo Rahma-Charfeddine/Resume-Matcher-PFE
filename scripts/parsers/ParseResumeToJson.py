@@ -13,8 +13,21 @@ SAVE_DIRECTORY = "../../Data/Processed/Resumes"
 class ParseResume:
 
     def __init__(self, resume: str):
+
+        
         self.resume_data = resume
-        self.clean_data = TextCleaner.clean_text(self.resume_data)
+        
+        
+
+        #self.clean_data = TextCleaner.clean_text(self.resume_data)
+
+        
+        self.clean_data = TextCleaner(self.resume_data).clean_text()
+        
+
+
+
+
         self.entities = DataExtractor(self.clean_data).extract_entities()
         self.name = DataExtractor(self.clean_data[:30]).extract_names()
         self.experience = DataExtractor(self.clean_data).extract_experience()

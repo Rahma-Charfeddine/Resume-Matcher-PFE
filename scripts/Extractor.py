@@ -13,6 +13,7 @@ RESUME_SECTIONS = [
     "Contact Information",
     "Objective",
     "Summary",
+    "Professional Summary"
     "Education",
     "Experience",
     "Skills",
@@ -57,7 +58,13 @@ class DataExtractor:
 
         self.text = raw_text
         self.clean_text = TextCleaner.clean_text(self.text)
+        
         self.doc = nlp(self.clean_text)
+
+
+
+
+        '''
         self.abbreviation_dict = {
             "CTO": "Chief Technology Officer",
             "CIO": "Chief Information Officer",
@@ -95,6 +102,7 @@ class DataExtractor:
             "SQL": "Structured Query Language",
             "NoSQL": "Not Only SQL"
         }
+        '''
 
     def extract_links(self):
         """
@@ -267,7 +275,7 @@ class DataExtractor:
            
      
     ###### original version of extract_particular_words ########
-    
+    '''
     def extract_particular_words(self):
         """
         Extract nouns and proper nouns from the given text.
@@ -281,10 +289,10 @@ class DataExtractor:
         pos_tags = ["NOUN", "PROPN", "ADJ"]
         nouns = [token.text for token in self.doc if token.pos_ in pos_tags]
         return nouns
-    
+    '''
 
     ###### modified version 1 ########
-    #### here #############
+    #### of extract_particular_words #############
     '''
     def extract_particular_words(self):
         """
@@ -313,6 +321,21 @@ class DataExtractor:
 
         return sorted_keywords
     '''
+    ###### modified version 2 ########
+    #### of extract_particular_words #############
+    def extract_particular_words(self):
+        normalized_sections = {section.lower() for section in RESUME_SECTIONS}
+
+        #named_entities = {ent.text.lower() for ent in self.doc.ents}
+        pos_tags = ["NOUN", "PROPN", "ADJ"]
+        #nouns = [token.text for token in self.doc if token.pos_ in pos_tags and token.text.lower() not in normalized_sections and token.text.lower() not in named_entities ]
+        
+        nouns = [token.text for token in self.doc if token.pos_ in pos_tags and token.text.lower() not in normalized_sections and token.ent_type_ not in ["PERSON", "ORG", "GPE"]]
+        return nouns
+    
+
+
+
 
 
     def extract_entities(self):

@@ -6,6 +6,10 @@ from nltk.stem import WordNetLemmatizer #import NLTK's WordNet lemmatizer
 from nltk.tokenize import word_tokenize #import  NLTK's word tokenizer
 
 
+#added library 
+import re
+
+
 class TextCleaner:
 
     def __init__(self, raw_text):
@@ -27,9 +31,15 @@ class TextCleaner:
         # Stores the original text in an instance variable.
         self.raw_input_text = raw_text
 
-    def clean_text(self) -> str:
+    #def clean_text(self) -> str:
+    def clean_text(self):
+        text = re.sub(r"[^\w\s]", "", self.raw_input_text)  # Remove special characters (e.g., ♂, ¶)
+        text = re.sub(r'\b\w*\d\w*\b', '', text)  # Remove words with digits (e.g., "Engineer321")
+        tokens = word_tokenize(text.lower())#Tokenize and convert text to lowercase
+        
 
-        tokens = word_tokenize(self.raw_input_text.lower()) #Tokenize and convert text to lowercase
+        #Tokenize and convert text to lowercase
+        #tokens = word_tokenize(self.raw_input_text.lower()) 
         tokens = [token for token in tokens if token not in self.stopwords_set] #removes stopwords and puntuation from tokens
         tokens = [self.lemmatizer.lemmatize(token) for token in tokens] #lemmatize tokens to their base form
         cleaned_text = " ".join(tokens) # Join tokens back into a cleaned text string
