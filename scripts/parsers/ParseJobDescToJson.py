@@ -15,7 +15,21 @@ class ParseJobDesc:
         self.job_desc_data = job_desc
         self.clean_data = TextCleaner.clean_text(self.job_desc_data)
         self.entities = DataExtractor(self.clean_data).extract_entities()
-        self.key_words = DataExtractor(self.clean_data).extract_particular_words()
+        
+
+
+        #I switched this one
+        #self.key_words = DataExtractor(self.clean_data).extract_particular_words()
+
+
+        # with this one (classical parsing)
+        #self.key_words = DataExtractor(self.clean_data).extract_particular_words_from_jd()
+
+        # calling AI parsing for key_words
+        self.key_words = DataExtractor(self.clean_data).extract_keywords_ai()
+
+
+
         self.pos_frequencies = CountFrequency(self.clean_data).count_frequency()
         self.keyterms = KeytermExtractor(self.clean_data).get_keyterms_based_on_sgrank()
         self.bi_grams = KeytermExtractor(self.clean_data).bi_gramchunker()
@@ -36,6 +50,11 @@ class ParseJobDesc:
             "tri_grams": str(self.tri_grams),
             "pos_frequencies": self.pos_frequencies,
         }
+
+        #print (self.job_desc_data)
+        print("+++++++++++++++++++++++++++++++++++++++++++++++")
+        print("+++++++++++++++++++++++++++++++++++++++++++++++")
+
         print (job_desc_dictionary["extracted_keywords"])
         
 

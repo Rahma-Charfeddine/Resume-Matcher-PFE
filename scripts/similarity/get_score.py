@@ -8,8 +8,14 @@ import numpy as np
 from typing import List
 import requests
 import yaml
+import re
 #for gemini
-import google.generativeai as genai
+#import google.generativeai as genai
+
+#from prompt import PROMPT_TEMPLATE
+#from prompt import ats_prompt
+from prompt_templates.ats_score_prompt import ats_prompt
+
 
 
 
@@ -17,11 +23,11 @@ import google.generativeai as genai
 
 
 #from typing import List
-from sentence_transformers import SentenceTransformer
+#from sentence_transformers import SentenceTransformer
 
 #for model deepseek
-import torch
-from transformers import AutoTokenizer, AutoModel
+#import torch
+#from transformers import AutoTokenizer, AutoModel
 
 #from sklearn.metrics.pairwise import cosine_similarity
 from qdrant_client import QdrantClient
@@ -511,6 +517,9 @@ def get_score(resume_string, job_description_string):
 # not for free
 '''
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))  # Store key in .env file
+model = genai.GenerativeModel(model_name='gemini-pro')
+
+
 
 def get_score(resume, job_description):
     prompt = f"""Analyze the match between this resume and job description.
@@ -550,9 +559,47 @@ def get_score(resume, job_description):
     except Exception as e:
         logging.error(f"Gemini API Error: {e}")
         return 50.0  # Fallback as float
+
+    '''
+
+
+
+# gemini for free
+# gemini-1.5-flash'
+# 17/04/2025
 '''
+genai.configure(api_key=os.getenv("Gemini_API_Key"))  # Store key in .env file
+model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+
+def get_score(resume, job_description):
+    prompt = PROMPT_TEMPLATE.format(resume=resume, job_description=job_description)
+
+    try:
+        response = model.generate_content(prompt)
+        result = response.text.strip()
+
+        match = re.search(r'\d{1,3}', result)
+        if match:
+            score = int(match.group())
+            return score if 0 <= score <= 100 else None
+        else:
+            return None
+    except Exception as e:
+        print("Error generating similarity score:", e)
+        return None
+'''
+
+
+
+    
+
+
+
+
+
 # wait for the access  to be accepted 
 # meta-llama/Meta-Llama-3-8B-Instruct
+'''
 from dotenv import load_dotenv
 
 # Load environment variables from .env
@@ -578,6 +625,9 @@ def get_score(resume, job_description):
         max_new_tokens=50
     )
     return response.strip()
+'''
+
+
 
 
 # mixedbread-ai/mxbai-rerank-xsmall-v1
@@ -601,6 +651,64 @@ def get_score(resume, job_description):
     )
     return response.strip()
 '''
+
+
+# Gemnini for free 
+
+'''
+import google.generativeai as genai
+import os
+
+genai.configure(api_key=os.environ['API_KEY'])
+
+model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+response = model.generate_content('Teach me about how an LLM works')
+
+print(response.text)
+'''
+
+# groq api  to import 
+from groq import Groq
+
+#client = Groq()
+
+
+def get_score(resume, job_description):
+    client = Groq(
+        api_key=os.environ.get("GROQ_API_KEY"),
+    )
+    formatted_prompt = ats_prompt.format(
+        resume=resume,
+        job_description=job_description
+    )
+    completion = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[
+            {
+                "role": "user",
+                #"content": "Analyze the match between this resume and job description, Return ONLY a numerical percentage (0-100) i need a relevant result. \nthis is the keywords of the resume : " + resume +" \n and these are the keywords of the job description" + job_description
+                "content": formatted_prompt
+            }
+            
+        ],
+    
+        temperature=1,
+        max_completion_tokens=1024,
+        top_p=1,
+        stream=True,
+        stop=None,
+    )
+
+    
+    result = ""
+    for chunk in completion:
+        result += chunk.choices[0].delta.content or ""
+
+    return result.strip()
+
+
+
+    
 '''
 
 if __name__ == "__main__":

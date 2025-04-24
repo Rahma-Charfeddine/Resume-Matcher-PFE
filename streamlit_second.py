@@ -207,14 +207,14 @@ st.write(selected_file["clean_data"])
 avs.add_vertical_space(3)
 st.write("Now let's take a look at the extracted keywords from the resume.")
 
-annotated_text(
-    create_annotated_text(
-        selected_file["clean_data"],
-        selected_file["extracted_keywords"],
-        "KW",
-        "#0B666A",
-    )
-)
+#annotated_text(
+#    create_annotated_text(
+#        selected_file["clean_data"],
+#        selected_file["extracted_keywords"],
+#        "KW",
+#        "#0B666A",
+#    )
+#)
 
 avs.add_vertical_space(5)
 st.write("Now let's take a look at the extracted entities from the resume.")
@@ -485,3 +485,37 @@ avs.add_vertical_space(3)
 
 # Go back to top
 st.markdown("[:arrow_up: Back to Top](#resume-matcher)")
+
+
+
+
+
+
+
+
+# streamlit line 166
+# Display the main title and subheaders
+st.title(":blue[Resume Matcher]")
+with st.sidebar:
+    st.image("Assets/img/header_image.png")
+    st.subheader(
+        "Free and Open Source ATS to help your resume pass the screening stage."
+    )
+    st.markdown(
+        "Check the website [www.resumematcher.fyi](https://www.resumematcher.fyi/)"
+    )
+
+    st.markdown(
+        "Give Resume Matcher a ⭐ on [GitHub](https://github.com/srbhr/resume-matcher)"
+    )
+
+    badge(type="github", name="srbhr/Resume-Matcher")
+    st.markdown("For updates follow me on Twitter.")
+    badge(type="twitter", name="_srbhr_")
+    st.markdown(
+        "If you like the project and would like to further help in development please consider 👇"
+    )
+    badge(type="buymeacoffee", name="srbhr")
+
+st.divider()
+avs.add_vertical_space(1)

@@ -31,7 +31,14 @@ class JobDescriptionProcessor:
             Returns True if successful, otherwise catches and prints any exceptions, returning False
         """
         try:
-            resume_dict = self._read_resumes() #call _read_resumes() method to read and parse resume data
+            # this first line of code is not correct (read_resume for job description )
+            #resume_dict = self._read_resumes() #call _read_resumes() method to read and parse resume data
+            
+            # updated version:
+            resume_dict = self._read_job_desc()
+
+
+            
             self._write_json_file(resume_dict)  #call _write_json_file() method to save parsed resume data as JSON
             #saved_file_name= self._write_json_file(resume_dict)
             return True
@@ -41,9 +48,7 @@ class JobDescriptionProcessor:
             return False
 
     def _read_resumes(self) -> dict:
-        """
-        Reads the resumes from the input file and parses them using ParseResume returning the JSON representation
-        """
+
         data = read_single_pdf(self.input_file_name) #Read the pdf file specified by input_file_name
         output = ParseResume(data).get_JSON() #Parse data using ParseResume class and get JSON representation
         return output

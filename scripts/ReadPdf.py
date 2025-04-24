@@ -3,6 +3,7 @@ import os #used for interacting with the operating system (e.g., checking file e
 
 from pypdf import PdfReader #importing the PdfReader from the pypdf library for PDF manipulation
 
+import docx
 
 
 #finds all the PDf files in a specified directory 'file_path' and returns a list of file paths of those PDF files
@@ -68,6 +69,48 @@ def read_single_pdf(file_path: str) -> str:
     except Exception as e:
         print(f"Error reading file '{file_path}': {str(e)}")
     return str(" ".join(output)) #returns the concatinated text from all the pages as a single string
+
+
+def read_single_document_n(file_path: str) -> str:
+    """
+    Read a single document file (.pdf, .docx, .txt) and extract the text.
+
+    Args:
+        file_path (str): The path of the document file.
+
+    Returns:
+        str: The extracted text from the document.
+    """
+    output = []
+
+    try:
+        ext = os.path.splitext(file_path)[1].lower()
+
+        if ext == ".pdf":
+            with open(file_path, "rb") as f:
+                pdf_reader = PdfReader(f)
+                for page in pdf_reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        output.append(text)
+
+        elif ext == ".docx":
+            doc = docx.Document(file_path)
+            for para in doc.paragraphs:
+                output.append(para.text)
+
+        elif ext == ".txt":
+            with open(file_path, "r", encoding="utf-8") as f:
+                output.append(f.read())
+
+        else:
+            raise ValueError(f"Unsupported file type: {ext}")
+
+    except Exception as e:
+        print(f"Error reading file '{file_path}': {str(e)}")
+
+    return " ".join(output)
+
 
 
 def get_pdf_files(file_path: str) -> list:

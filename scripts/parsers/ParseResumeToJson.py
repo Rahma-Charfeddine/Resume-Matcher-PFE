@@ -13,20 +13,10 @@ SAVE_DIRECTORY = "../../Data/Processed/Resumes"
 class ParseResume:
 
     def __init__(self, resume: str):
-
-        
         self.resume_data = resume
+        self.clean_data = TextCleaner.clean_text(self.resume_data)
         
-        
-
-        #self.clean_data = TextCleaner.clean_text(self.resume_data)
-
-        
-        self.clean_data = TextCleaner(self.resume_data).clean_text()
-        
-
-
-
+        #self.clean_data = TextCleaner(self.resume_data).clean_text()
 
         self.entities = DataExtractor(self.clean_data).extract_entities()
         self.name = DataExtractor(self.clean_data[:30]).extract_names()
@@ -34,8 +24,17 @@ class ParseResume:
         self.emails = DataExtractor(self.resume_data).extract_emails()
         self.phones = DataExtractor(self.resume_data).extract_phone_numbers()
         self.years = DataExtractor(self.clean_data).extract_position_year()
-        # key_words
-        self.key_words = DataExtractor(self.clean_data).extract_particular_words()
+
+
+        # key_words 
+        # classical method
+        #self.key_words = DataExtractor(self.clean_data).extract_particular_words()
+
+        #calling AI parsing for key_words
+        self.key_words = DataExtractor(self.clean_data).extract_keywords_ai()
+
+
+
         self.pos_frequencies = CountFrequency(self.clean_data).count_frequency()
         # uses on sgrank
         self.keyterms = KeytermExtractor(self.clean_data).get_keyterms_based_on_sgrank()
@@ -64,6 +63,9 @@ class ParseResume:
         }
         print (resume_dictionary["extracted_keywords"])
         print ('*****************************************************************')
-        print (resume_dictionary["keyterms"])
+        print ('*****************************************************************')
+        print ('*****************************************************************')
+        #print (resume_dictionary["keyterms"])
+        
 
         return resume_dictionary

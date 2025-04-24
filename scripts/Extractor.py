@@ -4,10 +4,15 @@ import urllib.request
 import spacy
 
 from .utils import TextCleaner
+import os
+from groq import Groq
+
+from prompt_templates.parsing_prompt import parse_keywords_prompt
 
 # Load the English model
-nlp = spacy.load("en_core_web_sm")
-
+#nlp = spacy.load("en_core_web_sm")
+# when i switched to the following it gave me a better parsing result
+nlp = spacy.load("en_core_web_trf")
 
 RESUME_SECTIONS = [
     "Contact Information",
@@ -41,6 +46,77 @@ RESUME_SECTIONS = [
     "Research Experience",
     "Teaching Experience",
 ]
+
+
+JD_SECTIONS = [
+    "Job Title",
+    "Position Title",
+    "Job Summary",
+    "Position Summary",
+    "Company Overview",
+    "About the Company",
+    "About Us",
+    "Who We Are",
+    "Job Description",
+    "Responsibilities",
+    "Key Responsibilities",
+    "Duties",
+    "Tasks",
+    "Job Duties",
+    "What You’ll Do",
+    "Your Role",
+    "Position Responsibilities",
+    "Required Skills",
+    "Qualifications",
+    "Requirements",
+    "What We’re Looking For",
+    "What You Bring",
+    "Desired Qualifications",
+    "Minimum Requirements",
+    "Preferred Qualifications",
+    "Skills and Experience",
+    "Education",
+    "Experience",
+    "Technical Skills",
+    "Soft Skills",
+    "Perks",
+    "Benefits",
+    "What We Offer",
+    "Nice to Have",
+    "Location",
+    "Employment Type",
+    "Work Schedule",
+    "Travel Requirements",
+    "Equal Opportunity Employer",
+    "How to Apply"
+]
+
+
+RELEVANT_JD_SECTIONS = [
+    "Job Description",
+    "Responsibilities",
+    "Requirements",
+    "Skills",
+    "Key Responsibilities",
+    "Required Skills",
+    "Preferred Skills",
+    "Technical Skills",
+    "Desired Qualifications",
+    "Qualifications",
+    "What You’ll Do",
+    "What You Bring"
+]
+
+IRRELEVANT_JD_SECTIONS = [
+    "About Us",
+    "Who We Are",
+    "Company Overview",
+    "Benefits",
+    "What We Offer",
+    "How to Apply",
+    "Equal Opportunity Employer"
+]
+
 
 
 class DataExtractor:
@@ -104,6 +180,8 @@ class DataExtractor:
         }
         '''
 
+
+
     def extract_links(self):
         """
         Find links of any type in a given string.
@@ -117,6 +195,11 @@ class DataExtractor:
         link_pattern = r"\b(?:https?://|www\.)\S+\b"
         links = re.findall(link_pattern, self.text)
         return links
+    
+
+
+
+
 
     def extract_links_extended(self):
         """
@@ -151,6 +234,11 @@ class DataExtractor:
         except Exception as e:
             print(f"Error extracting links: {str(e)}")
         return links
+    
+
+
+
+
 
     def extract_names(self):
         """Extracts and returns a list of names from the given
@@ -164,6 +252,9 @@ class DataExtractor:
         """
         names = [ent.text for ent in self.doc.ents if ent.label_ == "PERSON"]
         return names
+    
+
+
 
     def extract_emails(self):
         """
@@ -178,6 +269,9 @@ class DataExtractor:
         email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
         emails = re.findall(email_pattern, self.text)
         return emails
+    
+
+
 
     def extract_phone_numbers(self):
         """
@@ -194,6 +288,8 @@ class DataExtractor:
         )
         phone_numbers = re.findall(phone_number_pattern, self.text)
         return phone_numbers
+    
+
 
     def extract_experience(self):
         """
@@ -219,6 +315,8 @@ class DataExtractor:
                 experience_section.append(token.text)
 
         return " ".join(experience_section)
+    
+
 
     def extract_position_year(self):
         """
@@ -323,17 +421,178 @@ class DataExtractor:
     '''
     ###### modified version 2 ########
     #### of extract_particular_words #############
+    '''
     def extract_particular_words(self):
         normalized_sections = {section.lower() for section in RESUME_SECTIONS}
 
         #named_entities = {ent.text.lower() for ent in self.doc.ents}
         pos_tags = ["NOUN", "PROPN", "ADJ"]
+        blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
+        excluded_ents = {"PERSON", "ORG", "GPE"}
         #nouns = [token.text for token in self.doc if token.pos_ in pos_tags and token.text.lower() not in normalized_sections and token.text.lower() not in named_entities ]
         
-        nouns = [token.text for token in self.doc if token.pos_ in pos_tags and token.text.lower() not in normalized_sections and token.ent_type_ not in ["PERSON", "ORG", "GPE"]]
+        excluded_token_ids = set()
+        for ent in self.doc.ents:
+             if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+
+
+        nouns = [token.text for token in self.doc if token.pos_ in pos_tags 
+                 and token.text.lower() not in normalized_sections 
+                 #and token.ent_type_ not in ["PERSON", "ORG", "GPE"] 
+                 and  not any(ent.label_ in excluded_ents and token.i >= ent.start and token.i < ent.end for ent in self.doc.ents)
+                 and not any(bad in token.text.lower() for bad in blacklist_keywords)
+                 and token.i not in excluded_token_ids]
         return nouns
+        '''
+    
+    
+    def extract_particular_words(self):
+        normalized_sections = {section.lower() for section in RESUME_SECTIONS}
+        pos_tags = ["NOUN", "PROPN", "ADJ"]
+        blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
+        excluded_ents = {"PERSON", "ORG", "GPE"}
+
+        # Collect token indices to exclude
+        excluded_token_ids = set()
+        for ent in self.doc.ents:
+            if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+
+        # Final keyword extraction
+        keywords = [
+            token.text for token in self.doc
+            if token.pos_ in pos_tags
+            and token.text.lower() not in normalized_sections
+            and token.i not in excluded_token_ids
+            and not any(bad in token.text.lower() for bad in blacklist_keywords)
+        ]
+
+        return keywords
     
 
+
+    def extract_particular_words_from_jd(self):
+        """
+        Extract meaningful words (nouns, proper nouns, adjectives) from the job description,
+        even if there are no formal section headers.
+        """
+        # Step 1: Use full clean text since there's no clear sectioning
+        jd_text = self.clean_text
+        
+        # Step 2: Process the text with spaCy
+        doc = nlp(jd_text)
+        
+        # Step 3: Define what to include and exclude
+        pos_tags = ["NOUN", "PROPN", "ADJ"]
+        blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
+        excluded_ents = {"PERSON", "ORG", "GPE"}
+
+        # Step 4: Exclude named entities like company names, locations, etc.
+        excluded_token_ids = set()
+        for ent in doc.ents:
+            if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+        
+        # Step 5: Extract keywords
+        keywords = [
+            token.text.lower() for token in doc
+            if token.pos_ in pos_tags
+            and token.i not in excluded_token_ids
+            and token.text.lower() not in blacklist_keywords
+            and len(token.text) > 2
+        ]
+        
+        return list(set(keywords))  # Remove duplicates
+
+
+    def extract_particular_words_from_jd_latest_22(self):
+        import re
+
+        # Step 1: Normalize section names
+        irrelevant_sections = {s.lower() for s in IRRELEVANT_JD_SECTIONS}
+        relevant_sections = {s.lower() for s in RELEVANT_JD_SECTIONS}
+        all_sections = {s.lower(): s for s in JD_SECTIONS}
+
+        # Step 2: Split text into sections using section headers
+        section_pattern = re.compile(
+            r"(?i)(" + "|".join(re.escape(s) for s in all_sections.values()) + r")"
+        )
+
+        parts = section_pattern.split(self.clean_text)
+        sections = {}
+        current_section = None
+
+        for part in parts:
+            part_clean = part.strip()
+            part_lower = part_clean.lower()
+            if part_lower in all_sections:
+                current_section = part_lower
+                sections[current_section] = ""
+            elif current_section:
+                sections[current_section] += " " + part_clean
+
+        # Step 3: Keep only relevant sections
+        filtered_text = " ".join(
+            content for section, content in sections.items()
+            if section not in irrelevant_sections
+        )
+
+        # Step 4: NLP processing
+        doc = nlp(filtered_text)
+        pos_tags = ["NOUN", "PROPN", "ADJ"]
+        blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
+        excluded_ents = {"PERSON", "ORG", "GPE"}
+
+        # Remove named entities
+        excluded_token_ids = set()
+        for ent in doc.ents:
+            if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+
+        # Step 5: Extract keywords (similar to resume)
+        keywords = [
+            token.text for token in doc
+            if token.pos_ in pos_tags
+            and token.text.lower() not in all_sections  # remove section headers as keywords
+            and token.i not in excluded_token_ids
+            and not any(bad in token.text.lower() for bad in blacklist_keywords)
+        ]
+
+        return keywords
+
+
+    def extract_particular_words_from_JD_original(self):
+        normalized_sections = {section.lower() for section in JD_SECTIONS }
+        pos_tags = ["NOUN", "PROPN", "ADJ"]
+        blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
+        excluded_ents = {"PERSON", "ORG", "GPE"}
+
+        # Collect token indices to exclude
+        excluded_token_ids = set()
+        for ent in self.doc.ents:
+            if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+
+        # Final keyword extraction
+        keywords = [
+            token.text for token in self.doc
+            if token.pos_ in pos_tags
+            and token.text.lower() not in normalized_sections
+            and token.i not in excluded_token_ids
+            and not any(bad in token.text.lower() for bad in blacklist_keywords)
+        ]
+
+        return keywords
+
+    
+    
+    
+
+
+
+ 
+    
 
 
 
@@ -353,3 +612,103 @@ class DataExtractor:
             token.text for token in self.doc.ents if token.label_ in entity_labels
         ]
         return list(set(entities))
+    
+
+    def extract_keywords_ai_ex(self):
+        """
+        Uses an AI model to extract categorized keywords from the text (resume or JD).
+
+        Returns:
+            dict: A JSON-style dictionary of extracted keywords grouped by type.
+        """
+        try:
+            client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+            prompt = parse_keywords_prompt.format(content=self.clean_text)
+
+            completion = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.3,
+                max_completion_tokens=1024,
+                top_p=1,
+                stream=True,
+                stop=None,
+            )
+
+            result = ""
+            for chunk in completion:
+                result += chunk.choices[0].delta.content or ""
+
+            import json
+            return json.loads(result.strip())
+
+        except Exception as e:
+            print(f"AI keyword extraction failed: {str(e)}")
+            return {}
+
+
+    def extract_keywords_ai(self):
+        """
+        Uses an AI model to extract categorized keywords from the text (resume or JD).
+
+        Returns:
+            dict: A JSON-style dictionary of extracted keywords grouped by type.
+        """
+        
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        prompt = parse_keywords_prompt.format(content=self.clean_text)
+
+        completion = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                     "content": prompt
+                }
+            ],
+            temperature=0.3,
+            max_completion_tokens=1024,
+            top_p=1,
+            stream=True,
+            stop=None,
+        )
+
+        result = ""
+        for chunk in completion:
+            result += chunk.choices[0].delta.content or ""
+
+        return result.strip()
+
+     
+
+    def get_resume_sections(self):
+        
+        text = self.text.lower()
+        experience_pattern = r"(work experience|professional experience|employment history|experience)"
+        skills_pattern = r"(skills|technical skills|core competencies|technologies)"
+
+        sections = {"experience": "", "skills": ""}
+
+        # Split based on common section titles
+        exp_match = re.search(experience_pattern, text)
+        skill_match = re.search(skills_pattern, text)
+
+        if exp_match:
+            exp_start = exp_match.start()
+            sections["experience"] = text[exp_start:]
+            if skill_match:
+                sections["experience"] = text[exp_start:skill_match.start()]
+
+        if skill_match:
+            skill_start = skill_match.start()
+            sections["skills"] = text[skill_start:]
+        
+
+        print (sections)
+
+        return sections

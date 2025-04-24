@@ -28,6 +28,9 @@ def generate_unique_id():
     """
     return str(uuid4())
 
+
+
+# original TextCleaner Class
 '''
 class TextCleaner:
     """
@@ -82,6 +85,11 @@ class TextCleaner:
         return text
     
     '''
+
+# modified version 1
+# of TextCleaner class
+'''
+
 class TextCleaner:
 
     def __init__(self, raw_text):
@@ -121,8 +129,88 @@ class TextCleaner:
         tokens = [self.lemmatizer.lemmatize(token) for token in tokens] #lemmatize tokens to their base form
         cleaned_text = " ".join(tokens) # Join tokens back into a cleaned text string
         return cleaned_text
+'''
 
 
+
+# modified version 2
+# of TextCleaner class
+# working correctely 
+
+class TextCleaner:
+    """
+    A class for cleaning a text by removing specific patterns.
+    """
+
+    def remove_emails_links(text):
+        """
+        Clean the input text by removing specific patterns.
+
+        Args:
+            text (str): The input text to clean.
+
+        Returns:
+            str: The cleaned text.
+        """
+        for pattern in REGEX_PATTERNS:
+            text = re.sub(REGEX_PATTERNS[pattern], "", text)
+        return text
+
+
+
+    #  Keep Repeated Tokens (Usually)
+    #Most modern models are trained on full natural language — meaning repetition, emphasis, and structure matter.
+    #  For example:
+
+    #“Skilled in Python. Python used in multiple projects.”
+    #This emphasizes Python more strongly than just one mention.
+
+    #So don’t remove repetitions before sending the full text to the model — unless:
+
+    #You’re just sending keyword lists
+
+    #You're feeding in already structured info (like tags or skills as a comma-separated list)
+
+    
+    def clean_text(text):
+        
+        lemmatizer = WordNetLemmatizer()
+        stopwords_set = set(stopwords.words("english") + list(string.punctuation))
+        text = TextCleaner.remove_emails_links(text)
+        text = re.sub(r"[^\w\s]", "", text)
+        text = re.sub(r'\b\w*\d\w*\b', '', text)
+        tokens = word_tokenize(text.lower())
+        tokens = [token for token in tokens if token not in stopwords_set] #removes stopwords and puntuation from tokens
+        tokens = [lemmatizer.lemmatize(token) for token in tokens] #lemmatize tokens to their base form
+        
+        cleaned_text = " ".join(tokens) # Join tokens back into a cleaned text string
+        #print(cleaned_text)
+        return cleaned_text
+
+
+    def remove_stopwords(text):
+        """
+        Clean the input text by removing stopwords.
+
+        Args:
+            text (str): The input text to clean.
+
+        Returns:
+            str: The cleaned text.
+        """
+        doc = nlp(text)
+        for token in doc:
+            if token.is_stop:
+                text = text.replace(token.text, "")
+        return text
+    
+
+
+
+
+
+
+    
 
 class CountFrequency:
 

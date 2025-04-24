@@ -167,24 +167,7 @@ def tokenize_string(input_string):
 st.title(":blue[Resume Matcher]")
 with st.sidebar:
     st.image("Assets/img/header_image.png")
-    st.subheader(
-        "Free and Open Source ATS to help your resume pass the screening stage."
-    )
-    st.markdown(
-        "Check the website [www.resumematcher.fyi](https://www.resumematcher.fyi/)"
-    )
 
-    st.markdown(
-        "Give Resume Matcher a ⭐ on [GitHub](https://github.com/srbhr/resume-matcher)"
-    )
-
-    badge(type="github", name="srbhr/Resume-Matcher")
-    st.markdown("For updates follow me on Twitter.")
-    badge(type="twitter", name="_srbhr_")
-    st.markdown(
-        "If you like the project and would like to further help in development please consider 👇"
-    )
-    badge(type="buymeacoffee", name="srbhr")
 
 st.divider()
 avs.add_vertical_space(1)
@@ -200,15 +183,22 @@ output = st.selectbox(f"", resume_names)
 
 avs.add_vertical_space(5)
 
+########### resume part######################################
+
 st.write("You have selected ", output, " printing the resume")
 selected_file = read_json("Data/Processed/Resumes/" + output)
+
 #selected_file = read_json("Data/Processed/Resumes/Resume-john_doe (1).pdf127eee6c-a933-4bff-a075-5498ca29a1e4.json")
+
+
 avs.add_vertical_space(2)
 st.markdown("#### Parsed Resume Data")
 st.caption(
     "This text is parsed from your resume. This is how it'll look like after getting parsed by an ATS."
 )
-st.caption("Utilize this to understand how to make your resume ATS friendly.")
+#st.caption("Utilize this to understand how to make your resume ATS friendly.")
+
+
 avs.add_vertical_space(3)
 # st.json(selected_file)
 st.write(selected_file["clean_data"])
@@ -216,14 +206,55 @@ st.write(selected_file["clean_data"])
 avs.add_vertical_space(3)
 st.write("Now let's take a look at the extracted keywords from the resume.")
 
-annotated_text(
-    create_annotated_text(
-        selected_file["clean_data"],
-        selected_file["extracted_keywords"],
-        "KW",
-        "#0B666A",
-    )
-)
+
+# I change the  ["clean_data"] with extracted_keywords
+# formatting the way keywords are displayed 
+with st.expander("🔍 View Cleaned Resume (as Keywords)"):
+
+    # if the extraction is done in a classical way 
+    #resume_words = selected_file["extracted_keywords"].split()
+
+    # if the extraction is done by AI
+    resume_words = selected_file["extracted_keywords"].split('\n')
+
+    html_string = """
+    <style>
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 10px;
+        background-color: #1e1e1e;
+        border-radius: 10px;
+    }
+    .tag {
+        background-color: #2c2c2c;
+        color: #8de88d;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-family: monospace;
+        white-space: nowrap;
+    }
+    </style>
+    <div class="tag-container">
+    """
+
+    for word in resume_words:
+        html_string += f'<div class="tag">{word}</div>'
+
+    html_string += "</div>"
+
+    st.markdown(html_string, unsafe_allow_html=True)
+
+#annotated_text(
+#    create_annotated_text(
+#        selected_file["clean_data"],
+#        selected_file["extracted_keywords"],
+#        "KW",
+#        "#0B666A",
+#    )
+#)
 
 avs.add_vertical_space(5)
 st.write("Now let's take a look at the extracted entities from the resume.")
@@ -278,24 +309,80 @@ output = st.selectbox("", job_descriptions)
 
 avs.add_vertical_space(5)
 
+
+
+# #####################################Job desc section #############################################################
+
+
 selected_jd = read_json("Data/Processed/JobDescription/" + output)
 #selected_jd = read_json("Data/Processed/JobDescription/JobDescription-job_desc_front_end_engineer.pdf590ac7cc-ac90-437a-82f3-d2e008ca3d1c.json")
 avs.add_vertical_space(2)
 st.markdown("#### Job Description")
-st.caption(
-    "Currently in the pipeline I'm parsing this from PDF but it'll be from txt or copy paste."
-)
+#st.caption("Currently in the pipeline I'm parsing this from PDF but it'll be from txt or copy paste.")
 avs.add_vertical_space(3)
 # st.json(selected_file)
+st.caption("here is a cleaned version of the Job Description")
 st.write(selected_jd["clean_data"])
+
+
+
+
+
+
+with st.expander("🔍 View Cleaned Job Description (as keywords)"):
+    #if the extraction is done with the classical way 
+    # jd_words = selected_jd["clean_data"].split()
+    # if the extarction is done with the AI 
+    #jd_words = selected_jd["extracted_keywords"].split('\n')
+    jd_words = selected_jd["extracted_keywords"]
+
+    html_string = """
+    <style>
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 10px;
+        background-color: #1e1e1e;
+        border-radius: 10px;
+    }
+    .tag {
+        background-color: #2c2c2c;
+        color: #8de88d;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-family: monospace;
+        white-space: nowrap;
+    }
+    </style>
+    <div class="tag-container">
+    """
+
+    for word in jd_words:
+        html_string += f'<div class="tag">{word}</div>'
+
+    html_string += "</div>"
+
+    st.markdown(html_string, unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
 
 st.markdown("#### Common Words between Job Description and Resumes Highlighted.")
 
-annotated_text(
-    create_annotated_text(
-        selected_file["clean_data"], selected_jd["extracted_keywords"], "JD", "#F24C3D"
-    )
-)
+#annotated_text(
+#    create_annotated_text(
+#        selected_file["clean_data"], selected_jd["extracted_keywords"], "JD", "#F24C3D"
+#    )
+#)
 
 st.write("Now let's take a look at the extracted entities from the job description.")
 
@@ -340,12 +427,8 @@ avs.add_vertical_space(3)
 
 resume_string = " ".join(selected_file["extracted_keywords"])
 
-#resume_string ="Python Data Analyst SQL Machine Learning AI"
-#resume_string ="devops enginner"
-jd_string = " ".join(selected_jd["extracted_keywords"])
-#jd_string ="Looking for a Data Scientist with Python and AI expertise"
-#jd_string ="Job Title: Marketing Assistant Assist in executing marketing campaigns across various channels. Conduct market research and analyze consumer trends. Create and manage social media content. Support the organization of promotional events. Help produce marketing materials (brochures, newsletters, etc.).Maintain the marketing database and track campaign performance."
 
+jd_string = " ".join(selected_jd["extracted_keywords"])
 
 
 result = get_score(resume_string, jd_string)
@@ -353,7 +436,7 @@ result = get_score(resume_string, jd_string)
 #similarity_score = round(result[0].score * 100, 2)
 #similarity_score = round(result * 100, 2)
 
-    # Extract first number found in response
+# Extract first number found in response
 import re
 score = float(re.search(r'\d+', result).group())
 similarity_score = min(max(score, 0), 100)  # Clamp to 0-100 range

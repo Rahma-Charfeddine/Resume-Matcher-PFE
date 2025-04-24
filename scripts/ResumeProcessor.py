@@ -24,8 +24,21 @@ class ResumeProcessor:
             return False
 
     def _read_resumes(self) -> dict:
+        """
+        Reads the resumes from the input file and parses them using ParseResume returning the JSON representation
+        """
+        # this read_resume method will get us data in JSON format 
+        
+        # first version reading only pdf
         data = read_single_pdf(self.input_file_name)
+        # second version reading any doc type 
+        #data = read_single_document(self.input_file_name)
+
+
+
         output = ParseResume(data).get_JSON()
+        #print(data)
+
         return output
 
     def _read_job_desc(self) -> dict:
