@@ -1,16 +1,13 @@
 import re
 import urllib.request
-
+#from spacy.matcher import Matcher
 import spacy
-
 from .utils import TextCleaner
 import os
 from groq import Groq
-
 from prompt_templates.parsing_prompt import parse_keywords_prompt
 
-# Load the English model
-#nlp = spacy.load("en_core_web_sm")
+
 # when i switched to the following it gave me a better parsing result
 nlp = spacy.load("en_core_web_trf")
 
@@ -133,6 +130,9 @@ class DataExtractor:
         """
 
         self.text = raw_text
+        #self.textup= nlp(self.text)
+        self.raw_doc= nlp(self.text)
+
         self.clean_text = TextCleaner.clean_text(self.text)
         
         self.doc = nlp(self.clean_text)
@@ -196,9 +196,6 @@ class DataExtractor:
         links = re.findall(link_pattern, self.text)
         return links
     
-
-
-
 
 
     def extract_links_extended(self):
@@ -477,24 +474,24 @@ class DataExtractor:
         Extract meaningful words (nouns, proper nouns, adjectives) from the job description,
         even if there are no formal section headers.
         """
-        # Step 1: Use full clean text since there's no clear sectioning
+        
         jd_text = self.clean_text
         
-        # Step 2: Process the text with spaCy
+        
         doc = nlp(jd_text)
         
-        # Step 3: Define what to include and exclude
+      
         pos_tags = ["NOUN", "PROPN", "ADJ"]
         blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
         excluded_ents = {"PERSON", "ORG", "GPE"}
 
-        # Step 4: Exclude named entities like company names, locations, etc.
+        
         excluded_token_ids = set()
         for ent in doc.ents:
             if ent.label_ in excluded_ents:
                 excluded_token_ids.update(range(ent.start, ent.end))
         
-        # Step 5: Extract keywords
+        
         keywords = [
             token.text.lower() for token in doc
             if token.pos_ in pos_tags
@@ -509,12 +506,12 @@ class DataExtractor:
     def extract_particular_words_from_jd_latest_22(self):
         import re
 
-        # Step 1: Normalize section names
+        #  Normalize section names
         irrelevant_sections = {s.lower() for s in IRRELEVANT_JD_SECTIONS}
         relevant_sections = {s.lower() for s in RELEVANT_JD_SECTIONS}
         all_sections = {s.lower(): s for s in JD_SECTIONS}
 
-        # Step 2: Split text into sections using section headers
+        #split text into sections using section headers
         section_pattern = re.compile(
             r"(?i)(" + "|".join(re.escape(s) for s in all_sections.values()) + r")"
         )
@@ -532,25 +529,25 @@ class DataExtractor:
             elif current_section:
                 sections[current_section] += " " + part_clean
 
-        # Step 3: Keep only relevant sections
+        #keep only relevant sections
         filtered_text = " ".join(
             content for section, content in sections.items()
             if section not in irrelevant_sections
         )
 
-        # Step 4: NLP processing
+        # NLP processing
         doc = nlp(filtered_text)
         pos_tags = ["NOUN", "PROPN", "ADJ"]
         blacklist_keywords = {"linkedin", "github", "gitlab", "portfolio", "http", "https", "www"}
         excluded_ents = {"PERSON", "ORG", "GPE"}
 
-        # Remove named entities
+        #remove named entities
         excluded_token_ids = set()
         for ent in doc.ents:
             if ent.label_ in excluded_ents:
                 excluded_token_ids.update(range(ent.start, ent.end))
 
-        # Step 5: Extract keywords (similar to resume)
+        #Extract keywords
         keywords = [
             token.text for token in doc
             if token.pos_ in pos_tags
@@ -614,7 +611,11 @@ class DataExtractor:
         return list(set(entities))
     
 
-    def extract_keywords_ai_ex(self):
+
+
+
+
+    def extract_keywords_ai_ex_version(self):
         """
         Uses an AI model to extract categorized keywords from the text (resume or JD).
 
@@ -652,6 +653,18 @@ class DataExtractor:
             return {}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
     def extract_keywords_ai(self):
         """
         Uses an AI model to extract categorized keywords from the text (resume or JD).
@@ -686,29 +699,424 @@ class DataExtractor:
 
      
 
-    def get_resume_sections(self):
-        
+
+    
+
+
+
+
+    def get_all_resume_sections_V2(self):
+        """
+        Extract experience and skills sections from resume text.
+        Combines all occurrences of skill-related sections.
+        """
         text = self.text.lower()
         experience_pattern = r"(work experience|professional experience|employment history|experience)"
-        skills_pattern = r"(skills|technical skills|core competencies|technologies)"
+        skills_patterns = r"(skills|technical skills|core competencies|technologies|computer skills|programming languages|professional skills)"
+        all_sections_pattern = r"(education|experience|work experience|professional experience|employment history|projects|certifications|languages|hobbies|interests|contact|summary|objective)"
 
         sections = {"experience": "", "skills": ""}
 
-        # Split based on common section titles
+        # Extract experience section
         exp_match = re.search(experience_pattern, text)
-        skill_match = re.search(skills_pattern, text)
-
         if exp_match:
             exp_start = exp_match.start()
-            sections["experience"] = text[exp_start:]
-            if skill_match:
-                sections["experience"] = text[exp_start:skill_match.start()]
+            next_section = re.search(all_sections_pattern, text[exp_start + 10:])
+            if next_section:
+                exp_end = exp_start + 10 + next_section.start()
+                sections["experience"] = text[exp_start:exp_end]
+            else:
+                sections["experience"] = text[exp_start:]
 
-        if skill_match:
-            skill_start = skill_match.start()
-            sections["skills"] = text[skill_start:]
-        
+        # Extract all skill-related sections
+        skills_matches = list(re.finditer(skills_patterns, text))
+        skill_sections = []
 
-        print (sections)
+        for idx, match in enumerate(skills_matches):
+            skill_start = match.start()
+            next_match = None
+
+            # Try to find the next general section to know where this one ends
+            next_section = re.search(all_sections_pattern, text[skill_start + 10:])
+            if next_section:
+                skill_end = skill_start + 10 + next_section.start()
+                skill_sections.append(text[skill_start:skill_end])
+            else:
+                skill_sections.append(text[skill_start:])
+
+        # Combine all skill sections
+        sections["skills"] = "\n".join(skill_sections)
 
         return sections
+    
+
+
+
+    def extract_skills_section_from_cv_old(self):
+        """
+        Extracts only the skills-related content from the resume text.
+        """
+        text = self.text.lower()
+        skills_patterns = r"(skills|technical skills|core competencies|technologies|computer skills|programming languages|professional skills)"
+        all_sections_pattern = r"(education|experience|work experience|professional experience|employment history|projects|certifications|languages|hobbies|interests|contact|summary|objective)"
+
+        skills_matches = list(re.finditer(skills_patterns, text))
+        skill_sections = []
+
+        for idx, match in enumerate(skills_matches):
+            skill_start = match.start()
+            next_section = re.search(all_sections_pattern, text[skill_start + 10:])
+            if next_section:
+                skill_end = skill_start + 10 + next_section.start()
+                skill_sections.append(text[skill_start:skill_end])
+            else:
+                skill_sections.append(text[skill_start:])
+
+        return "\n".join(skill_sections)
+
+    
+
+    
+
+    
+
+
+
+    
+
+    
+    
+    
+
+
+
+
+    
+
+
+
+ 
+
+
+
+    def extract_all_names_section(self):
+        doc = self.raw_doc
+        
+        for ent in doc.ents:
+            if ent.label_ == "PERSON":
+                names = ent.text.split()
+                return names[0], names[-1] if len(names) > 1 else ("", "")
+        return "", ""
+    
+
+#name
+    #currently working
+    def extract_name_section(self) -> dict[str, str]:
+        """
+        Extracts first and last names from raw text in a frontend-friendly format.
+        
+        Returns:
+            {
+                "First Name": "John",  # (or "" if not found)
+                "Last Name": "Doe"     # (or "" if not found)
+            }
+        """
+        doc = nlp(self.text)  # Process raw text
+        
+        #get all PERSON entities
+        names = [ent.text.strip() for ent in doc.ents if ent.label_ == "PERSON"]
+        
+        if not names:
+            return {"First Name": "", "Last Name": ""}
+        
+        #take the first detected name (most likely the candidate's name)
+        full_name = names[0]
+        name_parts = full_name.split()
+        
+        # extract first and last names
+        first_name = name_parts[0] if name_parts else ""
+        last_name = name_parts[-1] if len(name_parts) > 1 else ""
+        
+        return {
+            "First Name": first_name,
+            "Last Name": last_name
+        }
+
+
+
+
+
+# email
+    #currently working
+    def extract_email_section(self) -> str:
+        """
+        Extracts the first valid email from raw text.
+        Handles:
+        - Standard formats (user@example.com)
+        - Subdomains (user@sub.example.com)
+        - Special chars in local part (user.name+tag@example.com)
+        - New TLDs (user@example.photography)
+
+        Returns:
+            str: The first valid email found, or empty string if none.
+        """
+        #robust regex (RFC 5322 compliant subset)
+        email_regex = r"""
+            \b[a-zA-Z0-9._%+-]+    # Local part (user.name+tag)
+            @                      # Literal @
+            [a-zA-Z0-9.-]+         # Domain (subdomain.example)
+            \.[a-zA-Z]{2,}\b       # TLD (.com, .photography, etc.)
+        """
+        match = re.search(email_regex, self.text, re.VERBOSE)
+        return match.group(0) if match else ""
+
+
+# loaction, address
+    #currently working
+    def extract_location_section(self):
+        """
+        Extracts location information exactly as it appears in the text.
+        Returns the first found location string or empty string if none found.
+        """
+        doc = nlp(self.text)
+        
+        #look for these common location indicators
+        location_keywords = [
+            'address', 'location', 'based in', 'located in', 
+            'residing in', 'from', 'current city', 'city'
+        ]
+        
+        # check named entities
+        for ent in doc.ents:
+            if ent.label_ in ["GPE", "LOC"]:
+                return ent.text
+        
+        # Then check for keywords followed by potential locations
+        for i, token in enumerate(doc):
+            if token.text.lower() in location_keywords and i+1 < len(doc):
+                # Return the next 1-3 words as potential location
+                return ' '.join(t.text for t in doc[i+1:i+4]).strip(' ,;')
+        
+           #looking for standalone location patterns
+        for chunk in doc.noun_chunks:
+            text = chunk.text.strip()
+            if (any(c.isupper() for c in text) and 
+                not any(t.like_email or t.like_url for t in chunk)):
+                return text
+        
+        return ""
+
+
+
+
+# phone number
+    
+    #currently working
+    def extract_phone_section(self):
+        """
+        Extracts phone numbers from resume text, handling various international formats.
+        Returns the first found phone number or empty string if none found.
+        """
+        # phone number regex pattern
+        phone_pattern = re.compile(
+            r'(?:\+?\d{1,3}[-.\s]?)?'  # Optional country code
+            r'\(?\d{3}\)?[-.\s]?'      # Area code with optional parentheses
+            r'\d{3}[-.\s]?\d{4}'       # Phone number part
+            r'(?:\s*(?:#|x|ext|extension)\s*\d+)?'  # Optional extension
+        )
+        
+        # find  matches in the text
+        matches = phone_pattern.finditer(self.text)
+        
+        for match in matches:
+            # get the matched phone number
+            phone_number = match.group()
+            
+            # basic validation - should contain at least 10 digits
+            if sum(c.isdigit() for c in phone_number) >= 10:
+                return phone_number.strip()
+        
+        return ""
+
+
+
+  
+
+
+
+
+ # Skills       
+    #currently working
+    def extract_skills_section(self) -> list:
+        #match the Skills section content
+        pattern = re.compile(r"Skills\s*[:\-]?\s*(.*?)(?=\n[A-Z][a-z]+|\Z)", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(self.text)
+        
+
+        if match:
+            skills_text = match.group(1)
+
+            # split by newlines or commas, then strip each skill
+            raw_skills = re.split(r"[\n,•\u2022]", skills_text)
+            
+            # clean and keep only meaningful skill strings
+            skills = [skill.strip() for skill in raw_skills if len(skill.strip()) > 1]
+            return skills
+        
+        
+
+        return []
+    
+
+ 
+
+# social media links:
+    #currently working
+   
+    def extract_social_links(self):
+        """
+        Simple but effective social link extractor using direct string matching
+        """
+        # list of platform domains to look for
+        PLATFORMS = {
+            'linkedin': ['linkedin.com/in/', 'linkedin.com/company/'],
+            'github': ['github.com/'],
+            'gitlab': ['gitlab.com/'],
+            'stackoverflow': ['stackoverflow.com/users/'],
+            'kaggle': ['kaggle.com/'],
+            'leetcode': ['leetcode.com/'],
+            'medium': ['medium.com/', 'medium.com/@'],
+            'bitbucket': ['bitbucket.org/'],
+            'hackerrank': ['hackerrank.com/'],
+            'twitter': ['twitter.com/'],
+            'facebook': ['facebook.com/'],
+            'instagram': ['instagram.com/']
+        }
+        
+
+
+
+
+
+        #additional common patterns that might indicate a portfolio
+        PORTFOLIO_KEYWORDS = ['portfolio', 'website', 'personal site', 'visit:']
+        
+        found_links = {}
+        
+        # split text into words while preserving URLs
+        words = re.split(r'[\s,;()]', self.text)
+        
+        for word in words:
+            #skip empty words and obvious non-URLs
+            if not word or '.' not in word or '@' in word:
+                continue
+                
+            # skip common false positives
+            if any(x in word.lower() for x in ['mailto:', '.png', '.jpg', '.pdf']):
+                continue
+                
+            # normalize the word (remove trailing punctuation)
+            clean_word = word.strip('.,:;!?"\'')
+            
+            #check against each platform
+            for platform, domains in PLATFORMS.items():
+                for domain in domains:
+                    if domain in clean_word.lower():
+                        # Ensure we have the full URL
+                        if not clean_word.startswith(('http://', 'https://')):
+                            clean_word = 'https://' + clean_word
+                        found_links[platform] = clean_word
+                        break
+                    
+            # check for portfolio links
+            if 'portfolio' not in found_links:
+                if any(keyword in self.text.lower() for keyword in PORTFOLIO_KEYWORDS):
+                    if ('.' in clean_word and 
+                        not any(domain in clean_word.lower() for domain in ['.com', '.net', '.org']) and
+                        len(clean_word.split('.')[-1]) >= 2):
+                        found_links['portfolio'] = clean_word
+        
+        return found_links
+    
+
+    def extract_experience_section(self):
+            section_patterns = [
+                r"\bprofessional experience\b",
+                r"\bwork experience\b",
+                r"\bexperience\b",
+                r"\bemployment history\b",
+                r"\bcareer history\b",
+                r"\brelevant experience\b",
+                r"\bprofessional background\b"
+            ]
+
+            # combine into one regex with OR
+            pattern = re.compile(r"(?i)(" + "|".join(section_patterns) + r")")
+
+            #find all matches of section headers
+            matches = list(pattern.finditer(self.text))
+
+
+
+
+
+
+
+
+
+
+            if not matches:
+                return ""
+
+            #start from the first matched section
+            start_index = matches[0].start()
+
+            #define possible following section headers
+            #next_section_pattern = re.compile(r"(?i)\b(education|skills|projects|certifications|languages|summary|profile|contact)\b")
+            
+            next_section_pattern = re.compile(
+                    r"(?i)\b("
+                    r"contact information|"
+                    r"contact|"
+                    r"objective|"
+                    r"summary|"
+                    r"professional summary|"
+                    r"education|"
+                    r"skills|"
+                    r"projects|"
+                    r"certifications|"
+                    r"licenses|"
+                    r"awards|"
+                    r"honors|"
+                    r"publications|"
+                    r"references|"
+                    r"technical skills|"
+                    r"computer skills|"
+                    r"computerskills|"
+                    r"programming languages|"
+                    r"software skills|"
+                    r"soft skills|"
+                    r"language skills|"
+                    r"languages|"
+                    r"professional skills|"
+                    r"transferable skills|"
+                    r"profile"
+                    r")\b"
+                )
+
+
+            following_matches = list(next_section_pattern.finditer(self.text[start_index:]))
+
+            if following_matches:
+                end_index = start_index + following_matches[0].start()
+            else:
+                end_index = len(self.clean_text)
+
+            experience_section = self.clean_text[start_index:end_index].strip()
+            return experience_section
+    
+
+
+
+
+    

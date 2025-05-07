@@ -330,11 +330,15 @@ st.write(selected_jd["clean_data"])
 
 
 with st.expander("🔍 View Cleaned Job Description (as keywords)"):
+
     #if the extraction is done with the classical way 
     # jd_words = selected_jd["clean_data"].split()
+
     # if the extarction is done with the AI 
-    #jd_words = selected_jd["extracted_keywords"].split('\n')
-    jd_words = selected_jd["extracted_keywords"]
+    jd_words = selected_jd["extracted_keywords"].split('\n')
+
+
+    #jd_words = selected_jd["extracted_keywords"]
 
     html_string = """
     <style>

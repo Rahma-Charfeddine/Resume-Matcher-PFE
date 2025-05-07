@@ -1,5 +1,9 @@
 import textacy  #used for text processing and analysis  built on spaCy
 from textacy import extract # used for keyterm extraction
+from collections import Counter
+
+from textacy.extract.keyterms import sgrank
+from spacy.tokens import Doc
 
 #Each method in the cxlass extracts key terms using different algorithms.
 class KeytermExtractor:
@@ -17,8 +21,95 @@ class KeytermExtractor:
         """
         self.raw_text = raw_text # storing the raw input text
         self.text_doc = textacy.make_spacy_doc(self.raw_text, lang="en_core_web_md")
+
         # convert raw text into spacy document using a specified language medel 
         self.top_n_values = top_n_values # store the number of top keyterms to extract
+
+    
+
+    def get_combined_keyterms_old(self):
+        """
+        Combine keyterms from multiple extraction methods and rank them.
+
+        Returns:
+            List[str]: A ranked list of unique keyterms aggregated from all methods.
+        """
+        all_keywords = []
+
+        # Get keywords from all available methods
+        methods = [
+            self.get_keyterms_based_on_textrank(),
+            self.get_keyterms_based_on_sgrank(),
+            self.get_keyterms_based_on_scake(),
+            self.get_keyterms_based_on_yake(),
+        ]
+
+        for result in methods:
+            # Each result is a list of tuples like: [('keyword1', 0.1), ...]
+            for kw, _ in result:
+                all_keywords.append(kw.lower())  # normalize to lowercase
+
+        # Count occurrences (how many methods agreed on this keyword)
+        keyword_freq = Counter(all_keywords)
+
+        # Return most common ones, limited by top_n_values
+        top_keywords = [kw for kw, _ in keyword_freq.most_common(self.top_n_values)]
+
+        print(top_keywords)
+        return top_keywords
+    
+
+
+
+
+    #05/05/2025
+
+
+    def get_keyterms_based_on_sgrank_newest(self):
+        """
+        Extract keyterms using the SGRank algorithm, after filtering out names, organizations, and places.
+
+        Returns:
+            List[Tuple[str, float]]: A list of top keyterms and their scores based on SGRank.
+        """
+        excluded_ents = {"PERSON", "ORG", "GPE"}
+        excluded_token_ids = set()
+
+        # Identify token indices to exclude based on named entities
+        for ent in self.text_doc.ents:
+            if ent.label_ in excluded_ents:
+                excluded_token_ids.update(range(ent.start, ent.end))
+
+        # Build filtered text from tokens not in excluded named entities
+        filtered_tokens = [token.text for token in self.text_doc if token.i not in excluded_token_ids]
+        filtered_text = " ".join(filtered_tokens)
+
+        # Recreate spaCy doc for SGRank
+        filtered_doc = textacy.make_spacy_doc(filtered_text, lang="en_core_web_md")  # or 'en_core_web_trf'
+
+        # Extract keyterms with scores
+        keyterms = sgrank(filtered_doc, normalize="lemma", topn=self.top_n_values)
+
+        return keyterms  # Returns list of tuples: (term, score)
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def get_keyterms_based_on_textrank(self):
         """
