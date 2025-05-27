@@ -673,7 +673,7 @@ from groq import Groq
 #client = Groq()
 
 
-def get_score(resume, job_description):
+def get_score1(resume, job_description):
     client = Groq(
         api_key=os.environ.get("GROQ_API_KEY"),
     )
@@ -741,3 +741,77 @@ if __name__ == "__main__":
     for r in final_result:
         print(r.score)'
 '''
+
+
+
+
+
+
+##### gemini model ::
+
+
+import google.generativeai as genai
+
+# Configure the Gemini API
+#genai.configure(api_key="AIzaSyClE0sKTVx8IWUrmxgoWeufv5peue3E4v4")
+genai.configure(api_key=os.environ.get("Gemini_API_Key")),
+
+
+
+def get_score(resume, job_description):
+    """
+    Calculate the compatibility score between a resume and a job description using the Gemini model.
+
+    Args:
+        resume (str): Space-separated string of resume keywords.
+        job_description (str): Space-separated string of job description keywords.
+
+    Returns:
+        str: A numerical percentage (0-100) representing the compatibility score.
+    """
+
+
+
+
+    # Configure the Gemini API
+    #genai.configure(api_key="AIzaSyClE0sKTVx8IWUrmxgoWeufv5peue3E4v4")
+    genai.configure(api_key=os.environ.get("Gemini_API_Key")),
+
+    # Define generation configuration
+    generation_config = {
+        "temperature": 0.2,
+        "max_output_tokens": 700,
+        "response_mime_type": "text/plain",
+    }
+
+    # Initialize the Gemini model
+    gemini_model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        generation_config=generation_config,
+        system_instruction=[
+            """You are a helpful and intelligent assistant designed to analyze the compatibility between a resume and a job description based on their keywords.
+    - When provided with resume keywords and job description keywords, return ONLY a numerical percentage (0-100) representing the compatibility score.
+    - Do not include any additional text, explanations, or symbols, just the number.
+    - If the information is insufficient to determine a score, return 0."""
+        ],
+)
+    # Construct the prompt
+    formatted_prompt = ats_prompt.format(
+    resume=resume,
+    job_description=job_description
+    )
+    '''
+    prompt = f"""
+    Analyze the match between the following resume and job description keywords, and return ONLY a numerical percentage (0-100) representing compatibility.
+    Resume keywords: {resume}
+    Job description keywords: {job_description}
+    """
+'''
+    try:
+        # Generate content using the Gemini model
+        response = gemini_model.generate_content([formatted_prompt])
+        result = response.text.strip()
+        return result
+    except Exception as e:
+        print(f"Error generating score with Gemini model: {e}")
+        return "0"  # Return 0 as a fallback in case of error

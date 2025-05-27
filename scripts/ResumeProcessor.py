@@ -31,6 +31,8 @@ class ResumeProcessor:
         
         # first version reading only pdf
         data = read_single_pdf(self.input_file_name)
+
+        
         # second version reading any doc type 
         #data = read_single_document(self.input_file_name)
 
@@ -54,3 +56,18 @@ class ResumeProcessor:
         json_object = json.dumps(resume_dictionary, sort_keys=True, indent=14)
         with open(save_directory_name, "w+") as outfile:
             outfile.write(json_object)
+
+
+
+# new method for the new API 
+
+    def parse_to_dict(self):
+        """
+        New method for the API: returns the resume dictionary without saving to file.
+        """
+        try:
+            resume_dict = self._read_resumes()
+            return resume_dict
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+            raise  # Re-raise to be caught by the caller

@@ -1,12 +1,15 @@
 import re
 import urllib.request
 #from spacy.matcher import Matcher
+import json
 import spacy
 from .utils import TextCleaner
 import os
 from groq import Groq
 from prompt_templates.parsing_prompt import parse_keywords_prompt
-
+from prompt_templates.experience_extractor_prompt import experience_extractor_prompt
+from prompt_templates.skills_extractor_prompt import skills_extractor_prompt
+from prompt_templates.education_extractor_prompt import education_extractor_prompt
 
 # when i switched to the following it gave me a better parsing result
 nlp = spacy.load("en_core_web_trf")
@@ -136,6 +139,14 @@ class DataExtractor:
         self.clean_text = TextCleaner.clean_text(self.text)
         
         self.doc = nlp(self.clean_text)
+
+
+
+        self.sections = self._map_sections()
+
+
+
+
 
 
 
@@ -615,7 +626,7 @@ class DataExtractor:
 
 
 
-    def extract_keywords_ai_ex_version(self):
+    def extract_keywords_ai_ex_version1(self):
         """
         Uses an AI model to extract categorized keywords from the text (resume or JD).
 
@@ -663,7 +674,7 @@ class DataExtractor:
 
 
 
-
+# currently working 
 
     def extract_keywords_ai(self):
         """
@@ -695,7 +706,9 @@ class DataExtractor:
         for chunk in completion:
             result += chunk.choices[0].delta.content or ""
 
-        return result.strip()
+        #return result.strip()
+        keywords = [keyword.strip() for keyword in result.split('\n') if keyword.strip()]
+        return keywords
 
      
 
@@ -946,8 +959,8 @@ class DataExtractor:
 
 
  # Skills       
-    #currently working
-    def extract_skills_section(self) -> list:
+    #old not  working
+    def extract_skills_sectionV1(self) -> list:
         #match the Skills section content
         pattern = re.compile(r"Skills\s*[:\-]?\s*(.*?)(?=\n[A-Z][a-z]+|\Z)", re.DOTALL | re.IGNORECASE)
         match = pattern.search(self.text)
@@ -967,8 +980,44 @@ class DataExtractor:
 
         return []
     
+ # Skills       
+    #currently working
+    def extract_skills_sectionV2(self) -> list:
+        """
+        Extract the Skills section from the CV text.
 
- 
+        Returns:
+            list: A list of skills extracted from the Skills section.
+        """
+        # Match the Skills section as a standalone section header
+        pattern = re.compile(
+            r"(?:\n|^)(Skills|Core Competencies|Technical Skills|Key Skills|Professional Skills|Programming Skills|Technical Skills|Tech Stack)\s*[:\-]?\s*\n(.*?)(?=\n{2,}|\n(?:Experience|Education|Work History|Projects|Certifications|[A-Z][a-zA-Z]*\s*[:\-])|\Z)",
+            re.DOTALL | re.IGNORECASE
+        )
+        match = pattern.search(self.text)
+
+        if match:
+            skills_text = match.group(2).strip()  # Group 2 contains the skills content
+            print(f"Extracted skills text: {skills_text}")  # Debug print
+
+            # Replace newlines with commas to normalize the list
+            skills_text = re.sub(r"\n\s*", ", ", skills_text)
+
+            # Split on commas, handling spaces after commas
+            raw_skills = re.split(r",\s*", skills_text)
+
+            # Clean each skill: remove trailing punctuation and filter out short/empty entries
+            skills = [
+                re.sub(r"[.,;]$", "", skill.strip())
+                for skill in raw_skills
+                if len(skill.strip()) > 1 and skill.strip()
+            ]
+            print(f"Parsed skills: {skills}")  # Debug print
+
+            return skills
+
+        print("No Skills section found.")  # Debug print
+        return []
 
 # social media links:
     #currently working
@@ -1038,8 +1087,9 @@ class DataExtractor:
         
         return found_links
     
-
-    def extract_experience_section(self):
+# experinece
+    # not working 
+    def extract_experience_section0(self):
             section_patterns = [
                 r"\bprofessional experience\b",
                 r"\bwork experience\b",
@@ -1114,9 +1164,419 @@ class DataExtractor:
 
             experience_section = self.clean_text[start_index:end_index].strip()
             return experience_section
-    
+
+
+# experience 
+  # working 
+
+    def extract_experience_section1(self) -> list:
+        """
+        Extract the Experience section from the CV text.
+
+        Returns:
+            list: A list of experience entries, where each entry is a string or dictionary.
+        """
+        # Match the Experience section as a standalone section header
+        pattern = re.compile(
+            r"(?:\n|^)(Experience|Professional Experience|Work History|Employment History|Career History|Relevant Experience|Work Experience)\b\s*[:\-]?\s*\n(.*?)(?=\n{2,}|\n(?:Skills|Education|Projects|Certifications|[A-Z][a-zA-Z]*\s*[:\-])|\Z)",
+            re.DOTALL | re.IGNORECASE
+        )
+        match = pattern.search(self.text)
+
+        if match:
+            experience_text = match.group(2).strip()
+            print(f"Extracted experience text: {experience_text}")  # Debug print
+
+            # Split the experience section into individual entries (based on dates or job titles)
+            # Look for lines starting with dates (e.g., "2017-Present") or job titles
+            entries = re.split(r"\n(?=\d{4}\s*(?:-|to|\–|\—)\s*(?:\d{4}|Present|Current))", experience_text, flags=re.IGNORECASE)
+
+            experience_entries = []
+            for entry in entries:
+                entry = entry.strip()
+                if not entry:
+                    continue
+
+                # Clean up the entry: replace newlines with spaces, handle bullet points
+                entry = re.sub(r"\n\s*(?:[•\u2022]?\s*)?", ", ", entry)
+                entry = re.sub(r"\s{2,}", " ", entry).strip()
+                if entry:
+                    experience_entries.append(entry)
+
+            print(f"Parsed experience entries: {experience_entries}")  # Debug print
+            return experience_entries
+
+        print("No Experience section found.")  # Debug print
+        return []
 
 
 
 
-    
+    #####################################################""
+    #####################################################
+    ################################################"
+    # #########################################
+    # 
+    # ################""""""""""""""""""
+    # "
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # sections  limiting 
+
+    def _normalize_text(self, text: str) -> str:
+        """
+        Normalize the text to ensure consistent formatting for section detection.
+
+        Args:
+            text (str): The raw text to normalize.
+
+        Returns:
+            str: The normalized text.
+        """
+        # Replace multiple newlines with a single newline
+        text = re.sub(r"\n\s*\n+", "\n", text)
+        # Normalize spaces
+        text = re.sub(r"\s+", " ", text)
+        # Ensure section headers are on their own lines
+        section_headers = [
+            "Professional Summary", "Skills", "Core Competencies", "Technical Skills",
+            "Key Skills", "Professional Skills", "Programming Skills", "Tech Stack",
+            "Work Experience", "Professional Experience", "Work History","Employment History",
+            "Career History", "Relevant Experience", "Experience", "Education",
+            "Projects", "Certifications"
+        ]
+        for header in section_headers:
+            text = re.sub(
+                rf"(?<!\w){header}(?!\w)",
+                f"\n{header}\n",
+                text,
+                flags=re.IGNORECASE
+            )
+        return text.strip()
+
+    def _map_sections(self) -> dict:
+        """
+        Map all sections in the resume text to their start and end positions.
+
+        Returns:
+            dict: A dictionary mapping section names to their (start, end) positions.
+        """
+        normalized_text = self._normalize_text(self.text)
+        lines = normalized_text.split("\n")
+        sections = {}
+        current_section = None
+        start_pos = 0
+
+        # Regex to identify section headers, including numbered sections like "1 EDUCATION"
+        section_pattern = re.compile(
+            r"^(Professional Summary|Skills|Core Competencies|Technical Skills|Key Skills|Professional Skills|Programming Skills|Tech Stack|Work Experience|Professional Experience|Work History|Employment History|Career History|Relevant Experience|Work Experience|Education|Projects|Certifications|[0-9\s]*(Education|Certifications))\b",
+            re.IGNORECASE
+        )
+
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+
+            # Check if the line is a section header
+            match = section_pattern.match(line)
+            if match:
+                # If we were already in a section, mark its end
+                if current_section:
+                    sections[current_section] = (start_pos, i)
+                # Start a new section
+                current_section = match.group(0).upper()
+                start_pos = i + 1  # Start after the header
+
+        # Mark the end of the last section
+        if current_section:
+            sections[current_section] = (start_pos, len(lines))
+
+        print(f"Section map: {sections}")  # Debug print
+        return sections
+
+    def _extract_section_content(self, section_name: str) -> str:
+        """
+        Extract the content of a specific section using the section map.
+
+        Args:
+            section_name (str): The name of the section to extract (case-insensitive).
+
+        Returns:
+            str: The content of the section, or empty string if not found.
+        """
+        normalized_text = self._normalize_text(self.text)
+        lines = normalized_text.split("\n")
+        section_name_upper = section_name.upper()
+
+        for section, (start, end) in self.sections.items():
+            if section_name_upper in section:
+                section_content = "\n".join(lines[start:end]).strip()
+                print(f"Extracted content for {section_name}: {section_content}")  # Debug print
+                return section_content
+
+        print(f"Section {section_name} not found in section map.")  # Debug print
+        return ""
+
+    def extract_experience_section1111(self) -> list:
+        """
+        Extract the Experience section from the CV text.
+
+        Returns:
+            list: A list of experience entries, where each entry is a dictionary with job details.
+        """
+        experience_text = self._extract_section_content("Experience")
+        if not experience_text:
+            print("No Experience section found.")
+            return []
+
+        # Split the experience section into individual entries based on dates
+        entries = re.split(
+            r"\n(?=(?:January|February|March|April|May|June|July|August|September|October|November|December)\s*\d{4}\s*(?:-|to|\–|\—)\s*(?:\d{4}|Present|Current)|\d{4}\s*(?:-|to|\–|\—)\s*(?:\d{4}|Present|Current))",
+            experience_text,
+            flags=re.IGNORECASE
+        )
+
+        experience_entries = []
+        for entry in entries:
+            entry = entry.strip()
+            if not entry:
+                continue
+
+            # Extract date range
+            date_match = re.search(
+                r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\s*\d{4}\s*(?:-|to|\–|\—)\s*(?:\d{4}|Present|Current)|\d{4}\s*(?:-|to|\–|\—)\s*(?:\d{4}|Present|Current))",
+                entry,
+                re.IGNORECASE
+            )
+            if date_match:
+                date = date_match.group(1)
+                rest = entry[:date_match.start()].strip() + entry[date_match.end():].strip()
+            else:
+                date = ""
+                rest = entry
+
+            # Split the rest into job info and responsibilities
+            lines = re.split(r"\n\s*(?:[•\u2022]?\s*)?", rest)
+            job_info = lines[0].strip() if lines and lines[0].strip() else ""
+            responsibilities = [line.strip() for line in lines[1:] if line.strip()]
+
+            experience_entry = {
+                "date": date,
+                "job_info": job_info,
+                "responsibilities": responsibilities
+            }
+            experience_entries.append(experience_entry)
+
+        print(f"Parsed experience entries: {experience_entries}")  # Debug print
+        return experience_entries
+
+
+    def extract_skills_section111(self) -> list:
+            """
+            Extract the Skills section from the CV text.
+
+            Returns:
+                list: A list of skills extracted from the Skills section.
+            """
+            skills_text = self._extract_section_content("Skills")
+            if not skills_text:
+                print("No Skills section found.")
+                return []
+
+            # Split on newlines and bullet points to get individual skills
+            raw_skills = re.split(r"\n\s*(?:[•\u2022]?\s*)?", skills_text)
+
+            # Clean each skill: remove leading bullet points, trailing punctuation, and filter out short/empty entries
+            skills = [
+                re.sub(r"^[•\u2022]?\s*|[.,;]$", "", skill.strip())
+                for skill in raw_skills
+                if len(skill.strip()) > 1 and skill.strip()
+            ]
+            print(f"Parsed skills: {skills}")  # Debug print
+
+            return skills
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# using AI to extract
+
+
+
+# skills with ai
+    def extract_skills_ai(self) -> list:
+        """
+        Uses an AI model to extract the Skills section from the text (resume).
+
+        Returns:
+            list: A list of skills extracted from the Skills section.
+        """
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+        prompt = skills_extractor_prompt.format(content=self.text)
+
+        completion = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt.format(content=self.text)
+                }
+            ],
+            temperature=0.3,
+            max_completion_tokens=1024,
+            top_p=1,
+            stream=True,
+            stop=None,
+        )
+
+        result = ""
+        for chunk in completion:
+            result += chunk.choices[0].delta.content or ""
+
+        try:
+            parsed_result = json.loads(result.strip())
+            return parsed_result.get("skills_section", [])
+        except json.JSONDecodeError as e:
+            print(f"JSON decoding error in extract_skills_ai: {e}, Raw output: {result}")
+            return []
+        
+
+
+
+
+
+
+
+# experience with ai
+ 
+    def extract_experience_ai(self) -> list:
+        """
+        Uses an AI model to extract the Experience section from the text (resume).
+
+        Returns:
+            list: A list of experience entries, where each entry is a dictionary with job details.
+        """
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+        prompt = experience_extractor_prompt.format(content=self.text)
+
+        completion = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt.format(content=self.text)
+                }
+            ],
+            temperature=0.3,
+            max_completion_tokens=2048,
+            top_p=1,
+            stream=True,
+            stop=None,
+        )
+
+        result = ""
+        for chunk in completion:
+            result += chunk.choices[0].delta.content or ""
+
+        try:
+            parsed_result = json.loads(result.strip())
+            return parsed_result.get("experience_section", [])
+        except json.JSONDecodeError as e:
+            print(f"JSON decoding error in extract_experience_ai: {e}, Raw output: {result}")
+            return []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#education with ai
+
+    def extract_education_ai(self) -> list:
+        """
+        Uses an AI model to extract the Education section from the text (resume).
+
+        Returns:
+            list: A list of education entries, where each entry is a dictionary with education details.
+        """
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+        # Define the prompt to extract the Education section
+        prompt = education_extractor_prompt.format(content=self.text)
+
+        completion = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt.format(content=self.text)
+                }
+            ],
+            temperature=0.3,
+            max_completion_tokens=1024,
+            top_p=1,
+            stream=True,
+            stop=None,
+        )
+
+        result = ""
+        for chunk in completion:
+            result += chunk.choices[0].delta.content or ""
+
+        # Parse the JSON string and return the education list
+        try:
+            parsed_result = json.loads(result.strip())
+            return parsed_result.get("education_section", [])
+        except json.JSONDecodeError as e:
+            print(f"JSON decoding error in extract_education_ai: {e}, Raw output: {result}")
+            return []

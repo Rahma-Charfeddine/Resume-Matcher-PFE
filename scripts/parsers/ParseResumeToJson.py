@@ -80,12 +80,16 @@ class ParseResume:
 
 
 
-        self.experience_section =DataExtractor(self.resume_data).extract_experience_section()
+        #self.experience_section =DataExtractor(self.resume_data).extract_experience_section()
         
-        self.skills_section = DataExtractor(self.resume_data).extract_skills_section()
+        #self.skills_section = DataExtractor(self.resume_data).extract_skills_section()
+        
+        
+        
 
-      
-
+        self.education_section = DataExtractor(self.resume_data).extract_education_ai()
+        self.skills_section = DataExtractor(self.resume_data).extract_skills_ai()
+        self.experience_section =DataExtractor(self.resume_data).extract_experience_ai()
 
 
 
@@ -96,19 +100,19 @@ class ParseResume:
         """
         resume_dictionary = {
             "unique_id": generate_unique_id(),
-            "resume_data": self.resume_data,
-            "clean_data": self.clean_data,
-            "entities": self.entities,
+            #"resume_data": self.resume_data,
+            #"clean_data": self.clean_data,
+            #"entities": self.entities,
             "extracted_keywords": self.key_words,
-            "keyterms": self.keyterms,
-            "name": self.name,
-            "experience": self.experience,
-            "emails": self.emails,
-            "phones": self.phones,
-            "years": self.years,
-            "bi_grams": str(self.bi_grams),
-            "tri_grams": str(self.tri_grams),
-            "pos_frequencies": self.pos_frequencies,
+            #"keyterms": self.keyterms,
+            #"name": self.name,
+            #"experience": self.experience,
+            #"emails": self.emails,
+            #"phones": self.phones,
+            #"years": self.years,
+            #"bi_grams": str(self.bi_grams),
+            #"tri_grams": str(self.tri_grams),
+            #"pos_frequencies": self.pos_frequencies,
 
             
 # profile page sections    
@@ -124,50 +128,15 @@ class ParseResume:
 
 
             "skills_section": self.skills_section,
+            "education_section": self.education_section,
 
 
 
         
 
         }
-        #print (resume_dictionary["extracted_keywords"])
-
-
-        print ('//////////////////////')
-        print ('*****************************************************************')
-        print ('////////////////////////////////////')
-        #print (resume_dictionary["name_section"] )
-
-        #print (resume_dictionary["email_section"] )
-
-
-        #print (resume_dictionary["location_section"] )
-       
-
-        #print (resume_dictionary["phone_section"] )
+        
       
 
-
-
-        print (resume_dictionary["social_media_section"] )
-
-
-        print ('//////////////////////')
-        print ('*****************************************************************')
-        print ('////////////////////////////////////') 
-
-
-        print (resume_dictionary["experience_section"] )
-
-        print ('//////////////////////')
-        print ('*****************************************************************')
-        print ('////////////////////////////////////') 
-        print (resume_dictionary["keyterms"])
-
-
-        print ('//////////////////////')
-        print ('*****************************************************************')
-        print ('////////////////////////////////////') 
-        
-
+    
         return resume_dictionary
